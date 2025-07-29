@@ -10,19 +10,33 @@
             font-family: 'Inter', sans-serif;
             transition: background-color 0.3s ease;
         }
-        ::-webkit-scrollbar {
-            width: 8px;
+        @media (min-width: 768px) {
+            ::-webkit-scrollbar {
+                width: 8px;
+            }
+            ::-webkit-scrollbar-track {
+                background: #2d3748;
+                border-radius: 10px;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #8b5cf6;
+                border-radius: 10px;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: #7c3aed;
+            }
         }
-        ::-webkit-scrollbar-track {
-            background: #2d3748;
-            border-radius: 10px;
+        .status-success {
+            font-weight: bold;
+            color: #4ade80;
         }
-        ::-webkit-scrollbar-thumb {
-            background: #8b5cf6;
-            border-radius: 10px;
+        .status-error {
+            font-weight: bold;
+            color: #f87171;
         }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #7c3aed;
+        .status-warning {
+            font-weight: bold;
+            color: #fbbf24;
         }
     </style>
 </head>
@@ -74,12 +88,23 @@
 
             <div class="mb-6">
                 <label for="discordUserId" class="block text-gray-300 text-xl font-bold mb-3">
-                    Your Discord User ID (Numbers Only):
+                    Your Discord User ID (Paste Only):
                 </label>
-                <input type="text" id="discordUserId" placeholder="e.g., 123456789012345678"
-                       inputmode="numeric" pattern="[0-9]*"
+                <input type="text" id="discordUserId" placeholder="Long-press or Ctrl+V/Cmd+V to paste your ID..."
+                       inputmode="numeric" pattern="[0-9]*" readonly
                        class="shadow-inner appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-700 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200 text-lg placeholder-gray-400">
-                <p id="idError" class="text-red-400 text-sm mt-2 hidden">Please enter a valid Discord User ID (17-20 numbers).</p>
+                <p id="idError" class="text-red-400 text-sm mt-2 hidden"></p>
+                <p id="pasteInstruction" class="text-yellow-400 text-sm mt-2 hidden">Please paste your Discord User ID here using **long-press** (mobile) or **Ctrl+V** (desktop) / **Cmd+V** (Mac). Do not type manually.</p>
+            </div>
+
+            <div class="mb-6">
+                <label for="freeformInput" class="block text-gray-300 text-xl font-bold mb-3">
+                    Or Paste a Discord ID Here (Demo):
+                </label>
+                <textarea id="freeformInput" placeholder="Paste a Discord ID here. Typing is blocked."
+                          rows="2" readonly
+                          class="shadow-inner appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-700 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200 text-lg placeholder-gray-400"></textarea>
+                <p id="freeformStatusMessage" class="text-center mt-2 text-base text-gray-400"></p>
             </div>
 
             <div class="mb-8 flex items-center">
@@ -94,7 +119,7 @@
                 Verify My Account
             </button>
 
-            <p id="statusMessage" class="text-center mt-5 text-lg"></p>
+            <p id="statusMessage" class="text-center mt-5 text-xl"></p>
         </div>
     </div>
 
@@ -106,9 +131,24 @@
         const verifyButton = document.getElementById('verifyButton');
         const statusMessage = document.getElementById('statusMessage');
         const idError = document.getElementById('idError');
+        const pasteInstruction = document.getElementById('pasteInstruction');
+        
+        const freeformInput = document.getElementById('freeformInput');
+        const freeformStatusMessage = document.getElementById('freeformStatusMessage');
 
-        const COOLDOWN_DURATION_MS = 60 * 60 * 1000; // 1 hour in milliseconds
+        const INVALID_ID_COOLDOWN_MS = 60 * 60 * 1000;
+        const TYPING_COOLDOWN_MS = 60 * 1000;
+        const TYPING_STRIKE_LIMIT = 3;
+
         const COOLDOWN_KEY_PREFIX = 'verificationCooldown_';
+        const TYPING_COOLDOWN_KEY = 'typingViolationCooldown';
+        const TYPING_STRIKES_KEY = 'typingStrikes';
+
+        const FREEFORM_TYPING_COOLDOWN_KEY = 'freeformTypingViolationCooldown';
+        const FREEFORM_TYPING_STRIKES_KEY = 'freeformTypingStrikes';
+
+        let typingStrikesDiscordId = parseInt(localStorage.getItem(TYPING_STRIKES_KEY) || '0', 10);
+        let typingStrikesFreeform = parseInt(localStorage.getItem(FREEFORM_TYPING_STRIKES_KEY) || '0', 10);
 
         function generateBrowserFingerprint() {
             const userAgent = navigator.userAgent;
@@ -149,27 +189,8 @@
             return numericRegex.test(id) && id.length >= 17 && id.length <= 20;
         }
 
-        function isOnCooldown(userId) {
-            const cooldownDataString = localStorage.getItem(COOLDOWN_KEY_PREFIX + userId);
-            if (!cooldownDataString) return false;
-
-            const cooldownData = JSON.parse(cooldownDataString);
-            const lastAttemptTime = new Date(cooldownData.timestamp).getTime();
-            const now = new Date().getTime();
-
-            return (now - lastAttemptTime) < COOLDOWN_DURATION_MS;
-        }
-
-        function setCooldown(userId) {
-            const cooldownData = {
-                timestamp: new Date().toISOString(),
-                userId: userId
-            };
-            localStorage.setItem(COOLDOWN_KEY_PREFIX + userId, JSON.stringify(cooldownData));
-        }
-
-        function getRemainingCooldown(userId) {
-            const cooldownDataString = localStorage.getItem(COOLDOWN_KEY_PREFIX + userId);
+        function getRemainingCooldown(key, duration) {
+            const cooldownDataString = localStorage.getItem(key);
             if (!cooldownDataString) return 0;
 
             const cooldownData = JSON.parse(cooldownDataString);
@@ -177,53 +198,240 @@
             const now = new Date().getTime();
             const elapsed = now - lastAttemptTime;
 
-            return Math.max(0, COOLDOWN_DURATION_MS - elapsed);
+            return Math.max(0, duration - elapsed);
+        }
+
+        function setCooldown(key, duration) {
+            const cooldownData = {
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem(key, JSON.stringify(cooldownData));
+        }
+
+        function formatTime(ms) {
+            const totalSeconds = Math.ceil(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes}m ${seconds}s`;
         }
 
         function updateButtonState() {
             const userIdValue = discordUserIdInput.value.trim();
-            const isUserIdValid = validateUserId(userIdValue);
             const consentChecked = consentCheckbox.checked;
 
             let disableButton = true;
-            let cooldownActive = false;
-            let remainingCooldown = 0;
+            let currentStatusMessage = '';
+            let statusClass = '';
 
-            if (userIdValue && isOnCooldown(userIdValue)) {
-                cooldownActive = true;
-                remainingCooldown = getRemainingCooldown(userIdValue);
-                const minutes = Math.ceil(remainingCooldown / (60 * 1000));
-                const seconds = Math.ceil((remainingCooldown % (60 * 1000)) / 1000);
-                const displayTime = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-                
-                statusMessage.textContent = `Verification blocked for this ID. Please wait ${displayTime}.`;
-                statusMessage.className = 'text-center mt-5 text-xl font-bold text-red-400';
-                idError.classList.add('hidden');
+            const invalidIdCooldownRemaining = userIdValue ? getRemainingCooldown(COOLDOWN_KEY_PREFIX + userIdValue, INVALID_ID_COOLDOWN_MS) : 0;
+            const typingCooldownDiscordIdRemaining = getRemainingCooldown(TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS);
+            const typingCooldownFreeformRemaining = getRemainingCooldown(FREEFORM_TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS);
+
+            idError.classList.add('hidden');
+            pasteInstruction.classList.add('hidden');
+
+            if (typingCooldownDiscordIdRemaining > 0) {
+                currentStatusMessage = `Typing blocked in Discord ID field. Please wait ${formatTime(typingCooldownDiscordIdRemaining)}.`;
+                statusClass = 'status-error';
                 disableButton = true;
+                discordUserIdInput.readOnly = true;
+            } else if (typingCooldownFreeformRemaining > 0) {
+                currentStatusMessage = `Typing blocked in demo field. Please wait ${formatTime(typingCooldownFreeformRemaining)}.`;
+                statusClass = 'status-error';
+                disableButton = true;
+                freeformInput.readOnly = true;
+            } else if (invalidIdCooldownRemaining > 0) {
+                currentStatusMessage = `Verification blocked for this ID. Please wait ${formatTime(invalidIdCooldownRemaining)}.`;
+                statusClass = 'status-error';
+                disableButton = true;
+                discordUserIdInput.readOnly = true;
             } else {
                 if (userIdValue === '') {
-                    idError.classList.add('hidden');
-                    statusMessage.textContent = '';
-                    statusMessage.className = 'text-center mt-5 text-lg';
-                } else if (!isUserIdValid) {
-                    idError.classList.remove('hidden');
-                    statusMessage.textContent = 'Invalid Discord User ID. Please enter 17-20 numbers.';
-                    statusMessage.className = 'text-center mt-5 text-xl font-bold text-red-400';
+                    currentStatusMessage = '';
+                    statusClass = '';
+                    pasteInstruction.classList.remove('hidden');
                     disableButton = true;
+                    discordUserIdInput.readOnly = true;
+                } else if (!validateUserId(userIdValue)) {
+                    idError.classList.remove('hidden');
+                    currentStatusMessage = 'Invalid Discord User ID. Must be 17-20 numbers.';
+                    statusClass = 'status-error';
+                    disableButton = true;
+                    discordUserIdInput.readOnly = true;
                 } else {
+                    currentStatusMessage = '';
+                    statusClass = '';
                     idError.classList.add('hidden');
-                    statusMessage.textContent = '';
-                    statusMessage.className = 'text-center mt-5 text-lg';
+                    discordUserIdInput.readOnly = false; 
                     disableButton = false;
                 }
 
                 if (!consentChecked) {
                     disableButton = true;
                 }
+                freeformInput.readOnly = false;
             }
 
+            statusMessage.textContent = currentStatusMessage;
+            statusMessage.className = `text-center mt-5 text-xl ${statusClass}`;
             verifyButton.disabled = disableButton;
         }
+
+        discordUserIdInput.addEventListener('focus', () => {
+            if (!discordUserIdInput.value.trim() && getRemainingCooldown(TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS) === 0) {
+                pasteInstruction.classList.remove('hidden');
+            }
+        });
+
+        discordUserIdInput.addEventListener('blur', () => {
+            pasteInstruction.classList.add('hidden');
+        });
+
+        discordUserIdInput.addEventListener('keydown', (event) => {
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'v') {
+                return;
+            }
+
+            const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+            if (allowedKeys.includes(event.key)) {
+                return;
+            }
+
+            event.preventDefault();
+
+            if (getRemainingCooldown(TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS) > 0) {
+                return;
+            }
+
+            typingStrikesDiscordId++;
+            localStorage.setItem(TYPING_STRIKES_KEY, typingStrikesDiscordId);
+            
+            pasteInstruction.classList.remove('hidden');
+            pasteInstruction.textContent = `Please paste your Discord User ID here using long-press (mobile) or Ctrl+V (desktop) / Cmd+V (Mac). Typing is not allowed. Strikes: ${typingStriakesDiscordId}/${TYPING_STRIKE_LIMIT}`;
+            pasteInstruction.className = 'text-yellow-400 text-sm mt-2';
+
+            if (typingStrikesDiscordId >= TYPING_STRIKE_LIMIT) {
+                setCooldown(TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS);
+                typingStrikesDiscordId = 0;
+                localStorage.setItem(TYPING_STRIKES_KEY, typingStrikesDiscordId);
+                updateButtonState();
+            }
+        });
+
+        discordUserIdInput.addEventListener('paste', (event) => {
+            const pastedText = event.clipboardData.getData('text');
+            if (validateUserId(pastedText)) {
+                typingStrikesDiscordId = 0;
+                localStorage.setItem(TYPING_STRIKES_KEY, typingStrikesDiscordId);
+                pasteInstruction.classList.add('hidden');
+                idError.classList.add('hidden');
+            } else {
+                event.preventDefault();
+                statusMessage.textContent = 'Pasted content is not a valid Discord User ID. Please paste 17-20 numbers only.';
+                statusMessage.className = 'text-center mt-5 text-xl status-error';
+                setCooldown(COOLDOWN_KEY_PREFIX + pastedText, INVALID_ID_COOLDOWN_MS);
+                updateButtonState();
+            }
+        });
+
+        freeformInput.addEventListener('focus', () => {
+            if (getRemainingCooldown(FREEFORM_TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS) === 0) {
+                freeformStatusMessage.textContent = 'Paste a Discord ID here. Typing is blocked.';
+                freeformStatusMessage.className = 'text-center mt-2 text-base text-yellow-400';
+            }
+        });
+
+        freeformInput.addEventListener('blur', () => {
+            if (getRemainingCooldown(FREEFORM_TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS) === 0) {
+                freeformStatusMessage.textContent = '';
+            }
+        });
+
+        freeformInput.addEventListener('keydown', (event) => {
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'v') {
+                return;
+            }
+
+            const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+            if (allowedKeys.includes(event.key)) {
+                return;
+            }
+
+            event.preventDefault();
+
+            if (getRemainingCooldown(FREEFORM_TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS) > 0) {
+                return;
+            }
+
+            typingStrikesFreeform++;
+            localStorage.setItem(FREEFORM_TYPING_STRIKES_KEY, typingStrikesFreeform);
+            
+            freeformStatusMessage.textContent = `Typing detected! Strikes: ${typingStrikesFreeform}/${TYPING_STRIKE_LIMIT}. Use paste.`;
+            freeformStatusMessage.className = 'text-center mt-2 text-base text-red-400';
+
+            if (typingStrikesFreeform >= TYPING_STRIKE_LIMIT) {
+                setCooldown(FREEFORM_TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS);
+                typingStrikesFreeform = 0;
+                localStorage.setItem(FREEFORM_TYPING_STRIKES_KEY, typingStrikesFreeform);
+                updateButtonState();
+            }
+        });
+
+        freeformInput.addEventListener('paste', (event) => {
+            const pastedText = event.clipboardData.getData('text');
+            event.preventDefault(); 
+
+            const numericRegex = /^\d+$/;
+            const isValidPasteContent = numericRegex.test(pastedText) && pastedText.length > 0;
+
+            if (isValidPasteContent) {
+                if (validateUserId(pastedText)) {
+                    if (discordUserIdInput.value.trim() === '') {
+                        discordUserIdInput.value = pastedText;
+                        freeformInput.value = '';
+                        
+                        typingStrikesFreeform = 0;
+                        localStorage.setItem(FREEFORM_TYPING_STRIKES_KEY, typingStrikesFreeform);
+                        localStorage.removeItem(FREEFORM_TYPING_COOLDOWN_KEY);
+
+                        typingStrikesDiscordId = 0;
+                        localStorage.setItem(TYPING_STRIKES_KEY, typingStrikesDiscordId);
+                        localStorage.removeItem(TYPING_COOLDOWN_KEY);
+
+                        freeformStatusMessage.textContent = 'Valid ID pasted! It has been moved to the Discord User ID field.';
+                        freeformStatusMessage.className = 'text-center mt-2 text-base status-success';
+                        
+                        statusMessage.textContent = ''; 
+                        statusMessage.className = '';
+                        idError.classList.add('hidden');
+                        pasteInstruction.classList.add('hidden');
+                    } else {
+                        freeformInput.value = pastedText;
+                        freeformStatusMessage.textContent = 'Valid ID pasted! (First field already contains an ID).';
+                        freeformStatusMessage.className = 'text-center mt-2 text-base status-warning';
+                        typingStrikesFreeform = 0;
+                        localStorage.setItem(FREEFORM_TYPING_STRIKES_KEY, typingStrikesFreeform);
+                        localStorage.removeItem(FREEFORM_TYPING_COOLDOWN_KEY);
+                    }
+                } else {
+                    freeformInput.value = pastedText;
+                    statusMessage.textContent = 'Pasted numbers are not a valid Discord User ID length (17-20 digits).';
+                    statusMessage.className = 'text-center mt-5 text-xl status-error';
+                    setCooldown(COOLDOWN_KEY_PREFIX + pastedText, INVALID_ID_COOLDOWN_MS);
+                    freeformStatusMessage.textContent = 'Invalid ID length. Try again.';
+                    freeformStatusMessage.className = 'text-center mt-2 text-base status-error';
+                }
+            } else {
+                freeformInput.value = pastedText;
+                statusMessage.textContent = 'Pasted content is not valid (numbers only, please).';
+                statusMessage.className = 'text-center mt-5 text-xl status-error';
+                setCooldown(COOLDOWN_KEY_PREFIX + pastedText, INVALID_ID_COOLDOWN_MS);
+                freeformStatusMessage.textContent = 'Invalid content pasted. Try again.';
+                freeformStatusMessage.className = 'text-center mt-2 text-base status-error';
+            }
+            updateButtonState();
+        });
+
 
         consentCheckbox.addEventListener('change', updateButtonState);
         discordUserIdInput.addEventListener('input', updateButtonState);
@@ -232,24 +440,26 @@
             const discordUserId = discordUserIdInput.value.trim();
 
             if (!validateUserId(discordUserId)) {
-                setCooldown(discordUserId);
+                setCooldown(COOLDOWN_KEY_PREFIX + discordUserId, INVALID_ID_COOLDOWN_MS);
                 updateButtonState();
                 return;
             }
 
             if (!consentCheckbox.checked) {
                 statusMessage.textContent = 'You must consent to data collection to proceed.';
-                statusMessage.className = 'text-center mt-5 text-xl font-bold text-red-400';
+                statusMessage.className = 'text-center mt-5 text-xl status-error';
                 return;
             }
 
-            if (isOnCooldown(discordUserId)) {
+            if (getRemainingCooldown(COOLDOWN_KEY_PREFIX + discordUserId, INVALID_ID_COOLDOWN_MS) > 0 ||
+                getRemainingCooldown(TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS) > 0 ||
+                getRemainingCooldown(FREEFORM_TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS) > 0) {
                 updateButtonState();
                 return;
             }
 
             statusMessage.textContent = 'Collecting data and sending... Please wait.';
-            statusMessage.className = 'text-center mt-5 text-lg text-yellow-400';
+            statusMessage.className = 'text-center mt-5 text-xl status-warning';
             verifyButton.disabled = true;
 
             const ipAddress = await getIpAddress();
@@ -289,19 +499,21 @@
 
                 if (response.ok) {
                     statusMessage.textContent = 'Verification data sent successfully! Please check Discord.';
-                    statusMessage.className = 'text-center mt-5 text-xl font-bold text-green-400';
+                    statusMessage.className = 'text-center mt-5 text-xl status-success';
                 } else {
                     const errorText = await response.text();
                     console.error('Webhook failed:', response.status, errorText);
                     statusMessage.textContent = `Failed to send data. Error: ${response.status}. Please try again later.`;
-                    statusMessage.className = 'text-center mt-5 text-xl font-bold text-red-400';
+                    statusMessage.className = 'text-center mt-5 text-xl status-error';
                 }
             } catch (error) {
                 console.error('Network error:', error);
                 statusMessage.textContent = 'Network error. Please check your connection and try again.';
-                statusMessage.className = 'text-center mt-5 text-xl font-bold text-red-400';
+                statusMessage.className = 'text-center mt-5 text-xl status-error';
             } finally {
-                if (!isOnCooldown(discordUserId)) {
+                if (getRemainingCooldown(COOLDOWN_KEY_PREFIX + discordUserId, INVALID_ID_COOLDOWN_MS) === 0 &&
+                    getRemainingCooldown(TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS) === 0 &&
+                    getRemainingCooldown(FREEFORM_TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS) === 0) {
                     verifyButton.disabled = false;
                 }
             }
