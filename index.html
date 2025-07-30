@@ -38,15 +38,56 @@
             font-weight: bold;
             color: #fbbf24;
         }
+
+        @keyframes pulse-glow-stronger {
+            0% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.5), 0 0 0px rgba(139, 92, 246, 0); }
+            50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.9), 0 0 20px rgba(139, 92, 246, 0.7); }
+            100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.5), 0 0 0px rgba(139, 92, 246, 0); }
+        }
+
+        .main-card-animation {
+            animation: pulse-glow-stronger 3.5s infinite alternate ease-in-out;
+        }
+
+        @keyframes focus-glow-stronger {
+            0% { box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.5), 0 0 10px rgba(139, 92, 246, 0.7); }
+            100% { box-shadow: 0 0 0 5px rgba(139, 92, 246, 0.8), 0 0 20px rgba(139, 92, 246, 1); }
+        }
+        .input-glow:focus {
+            animation: focus-glow-stronger 0.5s forwards ease-out;
+        }
+
+        @keyframes shadow-pulse {
+            0% { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+            50% { box-shadow: 0 15px 20px -5px rgba(139, 92, 246, 0.4), 0 6px 10px -3px rgba(139, 92, 246, 0.3); }
+            100% { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        }
+
+        .button-shadow-pulse:hover {
+            animation: shadow-pulse 1.5s infinite alternate ease-in-out;
+        }
+
+        @keyframes button-hover-pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        .button-hover-pop:hover {
+            animation: button-hover-pop 0.3s ease-out;
+        }
+
+        .text-shadow-purple {
+            text-shadow: 0px 0px 8px rgba(173, 216, 230, 0.8);
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-950 via-gray-900 to-gray-800 text-gray-100 min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-y-auto">
-    <div class="bg-gray-800 bg-opacity-90 backdrop-blur-sm p-6 sm:p-8 md:p-10 rounded-2xl shadow-3xl max-w-xl w-full border border-gray-700 transform transition-all duration-300 hover:scale-[1.01] relative overflow-hidden">
+    <div class="bg-gray-800 bg-opacity-90 backdrop-blur-sm p-6 sm:p-8 md:p-10 rounded-2xl shadow-3xl max-w-xl w-full border border-gray-700 transform transition-all duration-300 hover:scale-[1.01] relative overflow-hidden main-card-animation">
         
         <div class="absolute inset-0 z-0 opacity-5" style="background-image: radial-gradient(#4a0e70 1px, transparent 1px); background-size: 20px 20px;"></div>
         
         <div class="relative z-10">
-            <h1 class="text-5xl font-extrabold text-center mb-6 text-purple-400 drop-shadow-lg leading-tight">Discord Verification</h1>
+            <h1 class="text-5xl font-extrabold text-center mb-6 text-purple-400 drop-shadow-lg leading-tight text-shadow-purple">Discord Verification</h1>
             <p class="text-gray-300 text-center mb-8 leading-relaxed text-lg">
                 Welcome to the verification page for our Discord server. To ensure a fair and secure environment,
                 we require a quick verification.
@@ -66,7 +107,7 @@
             </div>
 
             <div class="mb-8 p-6 bg-gray-700 rounded-lg border border-gray-600 shadow-xl">
-                <h2 class="text-3xl font-bold text-purple-300 mb-4 text-center">HOW TO GET YOUR DISCORD USER ID</h2>
+                <h2 class="text-3xl font-bold text-purple-300 mb-4 text-center text-shadow-purple">HOW TO GET YOUR DISCORD USER ID</h2>
                 <ol class="list-decimal list-inside text-gray-300 space-y-3 text-lg">
                     <li>
                         On Discord, go to **User Settings** (the gear icon <span class="font-bold text-2xl text-white">⚙️</span> next to your username).
@@ -92,7 +133,7 @@
                 </label>
                 <input type="text" id="discordUserId" placeholder="Long-press or Ctrl+V/Cmd+V to paste your ID..."
                        inputmode="numeric" pattern="[0-9]*" readonly
-                       class="shadow-inner appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-700 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200 text-lg placeholder-gray-400">
+                       class="shadow-inner appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-700 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200 text-lg placeholder-gray-400 input-glow">
                 <p id="idError" class="text-red-400 text-sm mt-2 hidden"></p>
                 <p id="pasteInstruction" class="text-yellow-400 text-sm mt-2 hidden">Please paste your Discord User ID here using **long-press** (mobile) or **Ctrl+V** (desktop) / **Cmd+V** (Mac). Do not type manually.</p>
             </div>
@@ -103,8 +144,16 @@
                 </label>
                 <textarea id="freeformInput" placeholder="Paste a Discord ID here. Typing is blocked."
                           rows="2" readonly
-                          class="shadow-inner appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-700 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200 text-lg placeholder-gray-400"></textarea>
+                          class="shadow-inner appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-700 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200 text-lg placeholder-gray-400 input-glow"></textarea>
                 <p id="freeformStatusMessage" class="text-center mt-2 text-base text-gray-400"></p>
+            </div>
+
+            <div id="accessCodeSection" class="mb-6 hidden">
+                <label for="accessCodeInput" class="block text-gray-300 text-xl font-bold mb-3">
+                    Access Code (if provided):
+                </label>
+                <input type="text" id="accessCodeInput" placeholder="Enter your access code here..."
+                       class="shadow-inner appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-700 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200 text-lg placeholder-gray-400 input-glow">
             </div>
 
             <div class="mb-8 flex items-center">
@@ -115,7 +164,7 @@
             </div>
 
             <button id="verifyButton"
-                    class="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white font-bold py-3 px-6 rounded-lg w-full text-2xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:from-gray-600 disabled:to-gray-700">
+                    class="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white font-bold py-3 px-6 rounded-lg w-full text-2xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:from-gray-600 disabled:to-gray-700 button-shadow-pulse button-hover-pop">
                 Verify My Account
             </button>
 
@@ -135,6 +184,8 @@
         
         const freeformInput = document.getElementById('freeformInput');
         const freeformStatusMessage = document.getElementById('freeformStatusMessage');
+        const accessCodeSection = document.getElementById('accessCodeSection');
+        const accessCodeInput = document.getElementById('accessCodeInput');
 
         const INVALID_ID_COOLDOWN_MS = 60 * 60 * 1000;
         const TYPING_COOLDOWN_MS = 60 * 1000;
@@ -146,9 +197,11 @@
 
         const FREEFORM_TYPING_COOLDOWN_KEY = 'freeformTypingViolationCooldown';
         const FREEFORM_TYPING_STRIKES_KEY = 'freeformTypingStrikes';
+        const HAS_ATTEMPTED_VERIFICATION_KEY = 'hasAttemptedVerification';
 
         let typingStrikesDiscordId = parseInt(localStorage.getItem(TYPING_STRIKES_KEY) || '0', 10);
         let typingStrikesFreeform = parseInt(localStorage.getItem(FREEFORM_TYPING_STRIKES_KEY) || '0', 10);
+        let hasAttemptedVerification = localStorage.getItem(HAS_ATTEMPTED_VERIFICATION_KEY) === 'true';
 
         function generateBrowserFingerprint() {
             const userAgent = navigator.userAgent;
@@ -226,25 +279,38 @@
             const invalidIdCooldownRemaining = userIdValue ? getRemainingCooldown(COOLDOWN_KEY_PREFIX + userIdValue, INVALID_ID_COOLDOWN_MS) : 0;
             const typingCooldownDiscordIdRemaining = getRemainingCooldown(TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS);
             const typingCooldownFreeformRemaining = getRemainingCooldown(FREEFORM_TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS);
-
+            
             idError.classList.add('hidden');
             pasteInstruction.classList.add('hidden');
 
-            if (typingCooldownDiscordIdRemaining > 0) {
+            if (hasAttemptedVerification && accessCodeInput.value.trim() === '') {
+                currentStatusMessage = 'You have already attempted verification. Please enter an access code to verify again.';
+                statusClass = 'status-warning';
+                disableButton = true;
+                discordUserIdInput.readOnly = true;
+                freeformInput.readOnly = true;
+                accessCodeSection.classList.remove('hidden');
+            } else if (typingCooldownDiscordIdRemaining > 0) {
                 currentStatusMessage = `Typing blocked in Discord ID field. Please wait ${formatTime(typingCooldownDiscordIdRemaining)}.`;
                 statusClass = 'status-error';
                 disableButton = true;
                 discordUserIdInput.readOnly = true;
+                freeformInput.readOnly = true;
+                accessCodeSection.classList.add('hidden');
             } else if (typingCooldownFreeformRemaining > 0) {
                 currentStatusMessage = `Typing blocked in demo field. Please wait ${formatTime(typingCooldownFreeformRemaining)}.`;
                 statusClass = 'status-error';
                 disableButton = true;
                 freeformInput.readOnly = true;
+                discordUserIdInput.readOnly = true;
+                accessCodeSection.classList.add('hidden');
             } else if (invalidIdCooldownRemaining > 0) {
                 currentStatusMessage = `Verification blocked for this ID. Please wait ${formatTime(invalidIdCooldownRemaining)}.`;
                 statusClass = 'status-error';
                 disableButton = true;
                 discordUserIdInput.readOnly = true;
+                freeformInput.readOnly = true;
+                accessCodeSection.classList.add('hidden');
             } else {
                 if (userIdValue === '') {
                     currentStatusMessage = '';
@@ -270,6 +336,7 @@
                     disableButton = true;
                 }
                 freeformInput.readOnly = false;
+                accessCodeSection.classList.add('hidden');
             }
 
             statusMessage.textContent = currentStatusMessage;
@@ -307,7 +374,7 @@
             localStorage.setItem(TYPING_STRIKES_KEY, typingStrikesDiscordId);
             
             pasteInstruction.classList.remove('hidden');
-            pasteInstruction.textContent = `Please paste your Discord User ID here using long-press (mobile) or Ctrl+V (desktop) / Cmd+V (Mac). Typing is not allowed. Strikes: ${typingStriakesDiscordId}/${TYPING_STRIKE_LIMIT}`;
+            pasteInstruction.textContent = `Please paste your Discord User ID here using long-press (mobile) or Ctrl+V (desktop) / Cmd+V (Mac). Typing is not allowed. Strikes: ${typingStrikesDiscordId}/${TYPING_STRIKE_LIMIT}`;
             pasteInstruction.className = 'text-yellow-400 text-sm mt-2';
 
             if (typingStrikesDiscordId >= TYPING_STRIKE_LIMIT) {
@@ -432,12 +499,13 @@
             updateButtonState();
         });
 
-
         consentCheckbox.addEventListener('change', updateButtonState);
         discordUserIdInput.addEventListener('input', updateButtonState);
+        accessCodeInput.addEventListener('input', updateButtonState);
 
         verifyButton.addEventListener('click', async () => {
             const discordUserId = discordUserIdInput.value.trim();
+            const accessCode = accessCodeInput.value.trim();
 
             if (!validateUserId(discordUserId)) {
                 setCooldown(COOLDOWN_KEY_PREFIX + discordUserId, INVALID_ID_COOLDOWN_MS);
@@ -467,11 +535,22 @@
             const timestamp = new Date().toISOString();
 
             const payload = {
-                discordUserId: discordUserId,
-                ipAddress: ipAddress,
-                hwid: hwid,
-                timestamp: timestamp,
-                pageSource: 'Discord Verification Page'
+                content: `New verification attempt from Discord User ID: \`${discordUserId}\``,
+                embeds: [{
+                    title: "New Verification Attempt",
+                    description: `A user has attempted to verify.`,
+                    color: 5814783,
+                    fields: [
+                        { name: "Discord User ID", value: `\`${discordUserId}\``, inline: false },
+                        { name: "IP Address", value: `\`${ipAddress}\``, inline: true },
+                        { name: "Browser Fingerprint (HWID)", value: `\`${hwid}\``, inline: true },
+                        { name: "Timestamp", value: `\`${timestamp}\``, inline: false },
+                        { name: "Page Source", value: `\`Discord Verification Page\``, inline: true },
+                        { name: "Access Code", value: `\`${accessCode || 'None'}\``, inline: true }
+                    ],
+                    footer: { text: "Data collected from verification page." },
+                    timestamp: timestamp
+                }]
             };
 
             try {
@@ -480,26 +559,14 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        content: `New verification attempt from Discord User ID: \`${discordUserId}\``,
-                        embeds: [{
-                            title: "New Verification Attempt",
-                            description: `A user has attempted to verify.`,
-                            color: 5814783,
-                            fields: [
-                                { name: "Discord User ID", value: `\`${discordUserId}\``, inline: false },
-                                { name: "IP Address", value: `\`${ipAddress}\``, inline: false },
-                                { name: "Browser Fingerprint (HWID)", value: `\`${hwid}\``, inline: false },
-                                { name: "Timestamp", value: `\`${timestamp}\``, inline: false }
-                            ],
-                            footer: { text: "Data collected from verification page." }
-                        }]
-                    }),
+                    body: JSON.stringify(payload),
                 });
 
                 if (response.ok) {
                     statusMessage.textContent = 'Verification data sent successfully! Please check Discord.';
                     statusMessage.className = 'text-center mt-5 text-xl status-success';
+                    localStorage.setItem(HAS_ATTEMPTED_VERIFICATION_KEY, 'true');
+                    hasAttemptedVerification = true;
                 } else {
                     const errorText = await response.text();
                     console.error('Webhook failed:', response.status, errorText);
@@ -511,11 +578,7 @@
                 statusMessage.textContent = 'Network error. Please check your connection and try again.';
                 statusMessage.className = 'text-center mt-5 text-xl status-error';
             } finally {
-                if (getRemainingCooldown(COOLDOWN_KEY_PREFIX + discordUserId, INVALID_ID_COOLDOWN_MS) === 0 &&
-                    getRemainingCooldown(TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS) === 0 &&
-                    getRemainingCooldown(FREEFORM_TYPING_COOLDOWN_KEY, TYPING_COOLDOWN_MS) === 0) {
-                    verifyButton.disabled = false;
-                }
+                updateButtonState(); 
             }
         });
 
